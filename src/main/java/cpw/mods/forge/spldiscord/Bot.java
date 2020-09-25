@@ -26,6 +26,9 @@ import sun.rmi.runtime.Log;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -222,7 +225,13 @@ public class Bot {
     }
 
     private String getFilenameFromUrlString(final String url) {
-        return url.substring(url.lastIndexOf('/')+1).trim();
+        final String fixedUrl = url.substring(url.lastIndexOf('/') + 1).trim();
+        try {
+            return URLEncoder.encode(fixedUrl, StandardCharsets.UTF_8.toString());
+        } catch (UnsupportedEncodingException ex) {
+            LogManager.getLogger().warn("Unable to URL Encode the url {}", url);
+            return fixedUrl;
+        }
     }
 
     private String saveFile(final InputStream inputStream, final String filename) {
