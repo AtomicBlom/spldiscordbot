@@ -179,6 +179,7 @@ public class Bot {
         Mono<Void> ok = message.addReaction(TICK);
         Mono<Void> files;
         if (message.getAttachments().stream().anyMatch(att->att.getFilename().endsWith(".jar"))) {
+            LogManager.getLogger().info("Downloading from message Attachment: {}", message.getAttachments().stream().findFirst());
             files = Flux.from(message
                     .getAttachments()
                     .stream()
@@ -188,6 +189,7 @@ public class Bot {
                     .orElse(Mono.empty()))
                     .then(ok);
         } else if (message.getEmbeds().stream().anyMatch(e->e.getUrl().map(s->s.endsWith(".jar")).orElse(Boolean.FALSE))) {
+            LogManager.getLogger().info("Downloading from message Embed: {}", message.getEmbeds());
             files = Flux
                     .fromIterable(message.getEmbeds())
                     .flatMap(e->e.getUrl()
@@ -225,13 +227,7 @@ public class Bot {
     }
 
     private String getFilenameFromUrlString(final String url) {
-        final String fixedUrl = url.substring(url.lastIndexOf('/') + 1).trim();
-        try {
-            return URLEncoder.encode(fixedUrl, StandardCharsets.UTF_8.toString());
-        } catch (UnsupportedEncodingException ex) {
-            LogManager.getLogger().warn("Unable to URL Encode the url {}", url);
-            return fixedUrl;
-        }
+        return url.substring(url.lastIndexOf('/') + 1).trim();
     }
 
     private String saveFile(final InputStream inputStream, final String filename) {
@@ -261,11 +257,18 @@ public class Bot {
         return downloadUrl(attachment.getUrl(), inputStreamHandler);
     }
 
-    private <T> Mono<T> downloadUrl(final String url, final Function<InputStream, T> inputStreamHandler) {
-        LogManager.getLogger().info("Downloading file from URL {}", url);
+    private <T> Mono<T> downloadUrl(String url, final Function<InputStream, T> inputStreamHandler) {
+        try {
+            url = URLEncoder.encode(url, StandardCharsets.UTF_8.toString());
+        } catch (UnsupportedEncodingException ex) {
+            LogManager.getLogger().warn("Unable to URL Encode the url {}", url);
+        }
+        String closedUrl = url;
+
+        LogManager.getLogger().info("Downloading file from URL {}", closedUrl);
         HttpClient httpClient = HttpClient.create().followRedirect(true)
                 .headers(h->h.set(HttpHeaderNames.USER_AGENT, "SPL Discord Bot (1.0)").set(HttpHeaderNames.ACCEPT, "*/*"));
-        return httpClient.get().uri(url).responseSingle((r, buf) -> handleDownload(r, url, buf, inputStreamHandler));
+        return httpClient.get().uri(closedUrl).responseSingle((r, buf) -> handleDownload(r, closedUrl, buf, inputStreamHandler));
     }
 
     private <T> Mono<T> handleDownload(HttpClientResponse r, final String url, ByteBufMono buf, final Function<InputStream, T> inputStreamHandler) {
