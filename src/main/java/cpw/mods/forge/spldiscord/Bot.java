@@ -258,12 +258,7 @@ public class Bot {
     }
 
     private <T> Mono<T> downloadUrl(String url, final Function<InputStream, T> inputStreamHandler) {
-        try {
-            url = URLEncoder.encode(url, StandardCharsets.UTF_8.toString());
-        } catch (UnsupportedEncodingException ex) {
-            LogManager.getLogger().warn("Unable to URL Encode the url {}", url);
-        }
-        String closedUrl = url;
+        String closedUrl = url.replace(" ", "%20");
 
         LogManager.getLogger().info("Downloading file from URL {}", closedUrl);
         HttpClient httpClient = HttpClient.create().followRedirect(true)
